@@ -1,0 +1,11 @@
+{% extends 'portfolio/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+
+    <h1>Email sent successfully</h1>
+        <div class="card-footer text-center">
+    <div class="small"><a href="{% url 'portfolio:customer_list' %}">Back to Customer Page</a></div>
+  </div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "portfolio/base.html" %}
+{% block title %}Register{% endblock title %}
+
+{% block content %}
+   <div class="card-header">Welcome</div>
+       <div class="card-body" style="font-size:15px;">
+       <h1>Welcome {{ new_user.first_name }}!</h1>
+        <p>Your account has been successfully created. Now you can <a href="{% url 'login' %}">Log in</a>.</p>
+        </div>
+{% endblock %}

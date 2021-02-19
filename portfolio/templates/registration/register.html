@@ -1,0 +1,12 @@
+{% extends "portfolio/base.html" %}
+{% block title %}Register{% endblock title %}
+
+{% block content %}
+  <h1>Register</h1>
+  <p>Please, use the following form to sign up:</p>
+              <form action="." method="post">
+                {{ form.as_p }}
+                {% csrf_token %}
+                <p><input type="submit" value="Sign Up"></p>
+              </form>
+{% endblock %}
