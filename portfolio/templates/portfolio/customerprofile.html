@@ -13,7 +13,10 @@
 
                 <tbody>
                         <tr>
-                            <td style="width:5%;" align="right">Username:</td><td style="width:20%;">{{customer.username}}</td>
+                            <td style="width:5%;" align="right">First Name:</td><td style="width:20%;">{{user.first_name}}</td>
+                        </tr>
+                         <tr>
+                            <td style="width:5%;" align="right">Last Name:</td><td style="width:20%;">{{user.last_name}}</td>
                         </tr>
                         <tr>
                             <td style="width:5%;" align="right">Address:</td><td style="width:20%;">{{customer.address}}</td>
@@ -41,27 +44,10 @@
 
 
 
-                      <tr>
-                            <td></td>
-                            <td align="center">
-                                <p>
-                                    <!--a class="btn btn-primary" href="{% url 'fps:account_profile_edit' pk=customuser.pk %}" role="button">
-                                    Edit Information<--/a>
-                                 </p>
-                            </td>
-                        </tr>
 
-                </tbody>
-
-                </table>
-
-
+</tbody>
+             </table>
         </div>
         </div>
-        </div>
-
-
-
-
 
 {% endblock %}

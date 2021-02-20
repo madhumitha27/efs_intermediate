@@ -24,6 +24,7 @@ urlpatterns = [
     path('investment/create/', views.investment_new, name='investment_new'),
 
     path('customer/<int:pk>/portfolio/', views.portfolio, name='portfolio'),
+    path('customer/<int:pk>/customerportfolio/', views.cust_portfolio, name='cust_portfolio'),
     path('customer/<int:pk>/download_portfolio/', views.download_portfolio, name='download_portfolio'),
 path('customer/<int:pk>/sendemailpdf/', views.sendemailpdf, name='sendemailpdf'),
 

@@ -4,8 +4,8 @@ from django.utils import timezone
 import requests
 
 class Customer(models.Model):
-    #name = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer')
-    name = models.CharField(max_length=50)
+    name = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customer')
+    #name = models.CharField(max_length=50)
     address = models.CharField(max_length=200)
     cust_number = models.IntegerField(blank=False, null=False)
     city = models.CharField(max_length=50)

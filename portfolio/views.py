@@ -1,22 +1,19 @@
 from django.conf import settings
-from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponse
-from django.shortcuts import render
 from django.template.loader import get_template
 from reportlab.pdfgen import canvas
 from .models import *
 from .forms import *
-from django.shortcuts import render, get_object_or_404
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Sum
 from .utils import render_to_pdf
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CustomerSerializer
-
+import random
 
 now = timezone.now()
 def home(request):
@@ -43,18 +40,17 @@ class CustomerByNumber(APIView):
 @login_required
 def customer_list(request):
     user = User.objects.get(pk=request.user.id)
-   # if (user.groups.filter(name="customer").exists()):
-      #  print('here')
-      #  count = Customer.objects.filter(name_id=request.user.id).count()
-      #  if (count == 0):
-        #    nurse = Customer.objects.create(name_id=request.user.id, email=request.user.email)
-        #cust = Customer.objects.get(pk=request.user.username)
-        #return render(request, 'portfolio/accountprofile.html', {'customer': cust})
+    if (user.groups.filter(name="customer").exists()):
+        print('customer here')
+        cust = Customer.objects.get(name_id=request.user.id)
+        print(cust)
+        print(cust.cust_number)
+        return render(request, 'portfolio/customerprofile.html', {'customer': cust,'user':user})
 
-    #else:
-    customer = Customer.objects.filter(created_date__lte=timezone.now())
-    return render(request, 'portfolio/customer_list.html',
-                 {'customers': customer})
+    else:
+        customer = Customer.objects.filter(created_date__lte=timezone.now())
+        return render(request, 'portfolio/customer_list.html',
+                     {'customers': customer})
 
 def register(request):
     print("entered into register view method")
@@ -64,15 +60,23 @@ def register(request):
         if form.is_valid():
             userObj =form.save()
             my_group = Group.objects.get(name=form.cleaned_data['group'])
-            mygroupStr=str(my_group)
-            if (mygroupStr == "advisor"):
+            print('my_group',my_group)
+            userObj.groups.add(my_group)
+
+            if (my_group == "advisor"):
                 print("advisor...")
                 userObj.is_staff=True
                 userObj.is_superuser = True
-            else:
-                print("customer....")
-            userObj.groups.add(my_group)
             userObj.save()
+            print('saved')
+            name=userObj.username
+            print('name--',name)
+            user = User.objects.get(username=name)
+            if user.groups.filter(name="customer").exists():
+                print("customer....")
+                print(user)
+                custNo=random.random()
+                cust = Customer.objects.create(name_id=user.id, email=user.email,cust_number=custNo)
             return render(request,
                           'registration/registerdone.html',
                           {'form': form})
@@ -147,9 +151,9 @@ def returnPDF(pk):
 
 def download_portfolio(request,pk):
        pdf= returnPDF(pk)
+
        response = HttpResponse(pdf, content_type='application/pdf')
        response['Content-Disposition'] = 'attachment; filename="report.pdf"'
-
        p = canvas.Canvas ( pdf )
        p.setFont ( "Times-Roman" , 55 )
        p.showPage ( )
@@ -290,10 +294,23 @@ def investment_edit(request, pk):
 
 @login_required
 def portfolio(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
+    context=portfolio_content(pk)
+
+    return render(request, 'portfolio/portfolio.html', context)
+
+def cust_portfolio(request,pk):
+    user = get_object_or_404(User, pk=pk)
+    print('user--',user)
+    customer = Customer.objects.get(name_id=user.id)
+    print('customer--', customer)
+    context = portfolio_content(customer.id)
+    return render(request, 'portfolio/portfolio.html', context)
+
+def portfolio_content(custPk):
+    customer = get_object_or_404(Customer, pk=custPk)
     customers = Customer.objects.filter(created_date__lte=timezone.now())
-    investments = Investment.objects.filter(customer=pk)
-    stocks = Stock.objects.filter(customer=pk)
+    investments = Investment.objects.filter(customer=custPk)
+    stocks = Stock.objects.filter(customer=custPk)
 
     sum_of_initial_stock_value = 0
     sum_current_stocks_value = 0
@@ -310,22 +327,23 @@ def portfolio(request, pk):
     investment_result = 0
     investment_result_INR = 0
 
-    sum_portfolio_intial_investments=0
+    sum_portfolio_intial_investments = 0
     sum_portfolio_intial_investments_INR = 0
     sum_portfolio_current_investments = 0
-    sum_portfolio_current_investments_INR= 0
-    grand_total_results=0
+    sum_portfolio_current_investments_INR = 0
+    grand_total_results = 0
     grand_total_results_INR = 0
-
+    cur_rate=0;
     # Loop through each stock and add the value to the total
     for stock in stocks:
         sum_current_stocks_value += stock.current_stock_value()
         sum_of_initial_stock_value += stock.initial_stock_value()
+        cur_rate= stock.currency_rate()
     stock_result = sum_current_stocks_value - sum_of_initial_stock_value
     # COnverting Stocks to INR
-    sum_of_initial_stock_value_INR = float(sum_current_stocks_value) * stock.currency_rate()
-    sum_current_stocks_value_INR = float(sum_of_initial_stock_value) * stock.currency_rate()
-    stock_result_INR = float(stock_result) * stock.currency_rate()
+    sum_of_initial_stock_value_INR = float(sum_current_stocks_value) * cur_rate
+    sum_current_stocks_value_INR = float(sum_of_initial_stock_value) * cur_rate
+    stock_result_INR = float(stock_result) * cur_rate
 
     for investment in investments:
         sum_current_investment_value += investment.recent_value
@@ -333,18 +351,17 @@ def portfolio(request, pk):
 
     investment_result = sum_current_investment_value - sum_of_initial_investment_value
     # COnverting Investments to INR
-    sum_current_investment_value_INR = float(sum_current_investment_value) * stock.currency_rate()
-    sum_of_initial_investment_value_INR = float(sum_of_initial_investment_value) * stock.currency_rate()
-    investment_result_INR = float(investment_result) * stock.currency_rate()
+    sum_current_investment_value_INR = float(sum_current_investment_value) * cur_rate
+    sum_of_initial_investment_value_INR = float(sum_of_initial_investment_value) * cur_rate
+    investment_result_INR = float(investment_result) * cur_rate
 
     sum_portfolio_intial_investments = float(sum_of_initial_stock_value) + float(sum_of_initial_investment_value)
-    sum_portfolio_intial_investments_INR = float(sum_portfolio_intial_investments) * stock.currency_rate()
+    sum_portfolio_intial_investments_INR = float(sum_portfolio_intial_investments) * cur_rate
     sum_portfolio_current_investments = float(sum_current_stocks_value) + float(sum_current_investment_value)
-    sum_portfolio_current_investments_INR =float(sum_portfolio_current_investments) * stock.currency_rate()
+    sum_portfolio_current_investments_INR = float(sum_portfolio_current_investments) * cur_rate
     grand_total_results = float(stock_result) + float(investment_result)
-    grand_total_results_INR = float(grand_total_results) * stock.currency_rate()
-
-    return render(request, 'portfolio/portfolio.html', {'customers': customers, 'investments': investments, 'stocks': stocks,
+    grand_total_results_INR = float(grand_total_results) * cur_rate
+    context = {'customers': customers, 'investments': investments, 'stocks': stocks,
                # 'sum_acquired_value': sum_acquired_value,
                # 'sum_recent_value': sum_recent_value, # 'overall_investment_results':overall_investment_results,
                'investment_result': investment_result, 'investment_result_INR': investment_result_INR,
@@ -357,11 +374,10 @@ def portfolio(request, pk):
                'sum_of_initial_stock_value': sum_of_initial_stock_value,
                'sum_of_initial_stock_value_INR': sum_of_initial_stock_value_INR,
                'sum_current_stocks_value_INR': sum_current_stocks_value_INR,
-                                                        'sum_portfolio_intial_investments': sum_portfolio_intial_investments,
-                                                        'sum_portfolio_intial_investments_INR': sum_portfolio_intial_investments_INR,
-                                                        'sum_portfolio_current_investments': sum_portfolio_current_investments,
-                                                        'sum_portfolio_current_investments_INR': sum_portfolio_current_investments_INR,
-                                                        'grand_total_results': grand_total_results,
-                                                        'grand_total_results_INR': grand_total_results_INR
-                                                        })
-
+               'sum_portfolio_intial_investments': sum_portfolio_intial_investments,
+               'sum_portfolio_intial_investments_INR': sum_portfolio_intial_investments_INR,
+               'sum_portfolio_current_investments': sum_portfolio_current_investments,
+               'sum_portfolio_current_investments_INR': sum_portfolio_current_investments_INR,
+               'grand_total_results': grand_total_results,
+               'grand_total_results_INR': grand_total_results_INR}
+    return context
